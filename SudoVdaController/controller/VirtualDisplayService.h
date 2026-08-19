@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <optional>
 #include <vector>
@@ -45,6 +46,8 @@ namespace vdc {
         std::unique_ptr<VirtualDisplayService> virtualDisplayService_;
         std::map<GUID, std::shared_ptr<VirtualDisplay>> virtualDisplays_;
         std::unique_ptr<ConfigStore> configStore_;
+        std::mutex pendingConfigSaveMutex_;
+        std::map<GUID, bool> pendingConfigSaves_;
 
     };
 

@@ -111,9 +111,25 @@ bool VirtualDisplayService::CreateVirtualDisplay(const VirtualDisplay& cfg, cons
             std::string devNameCopy = WStringToString(virtualDisplay.deviceName);
             auto virtualDisplayShared = session;
 
+            {
+                std::lock_guard<std::mutex> lock(pendingConfigSaveMutex_);
+                pendingConfigSaves_[displayId] = true;
+            }
+
             std::thread([this, displayId, virtualDisplayShared, cfgCopy, devNameCopy]() mutable {
                 Sleep(5000);
+
+                // Serialize the delayed save with removal. If removal won the
+                // race, the pending entry is gone and no stale config is saved.
+                std::lock_guard<std::mutex> lock(pendingConfigSaveMutex_);
+                auto pending = pendingConfigSaves_.find(displayId);
+                if (pending == pendingConfigSaves_.end()) {
+                    LOG_INFO("Skipping config save for a removed virtual display");
+                    return;
+                }
+
                 auto res = AddNewDisplayToConfigStore(displayId, *virtualDisplayShared, cfgCopy);
+                pendingConfigSaves_.erase(pending);
             }).detach();
         }
 
@@ -141,6 +157,12 @@ bool VirtualDisplayService::RemoveVirtualDisplay(const GUID& guid) {
         if (virtualDisplay == virtualDisplays_.end()) {
             throw std::exception("The virtual display could not be found");
         }
+
+        // Keep removal and the delayed post-create config save ordered. A save
+        // already in progress completes first; otherwise erasing this entry
+        // cancels it before it can persist a display that no longer exists.
+        std::lock_guard<std::mutex> pendingSaveLock(pendingConfigSaveMutex_);
+        pendingConfigSaves_.erase(guid);
 
         if (configStore_ && virtualDisplay->second->deviceName.find(DEFAULT_VIRTUAL_DISPLAY_DEVICE_NAME) == std::wstring::npos) {
             auto displayConfigOpt = configStore_->GetByDisplayId(GuidToString(guid));
