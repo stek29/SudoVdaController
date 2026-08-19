@@ -389,6 +389,13 @@ DisplayConfig VirtualDisplayService::FindExistingDisplayConfigOrGenerate(const V
 
     if (auto mappedOpt = configStore_->GetByNameAndMode(cfg.deviceName, cfg.width, cfg.height, cfg.refreshRateMilliHz); 
         mappedOpt.has_value() && !mappedOpt->displayId.empty()) {
+        // A caller-supplied GUID is the display's lifecycle identity and must
+        // take precedence over an ID retained in a matching stored topology.
+        // Keep the rest of the stored configuration, but bind this instance to
+        // the requested GUID so a later remove command can address it reliably.
+        if (guidOpt) {
+            mappedOpt->displayId = vdc::GuidToString(*guidOpt);
+        }
         return mappedOpt.value();
     }
 
