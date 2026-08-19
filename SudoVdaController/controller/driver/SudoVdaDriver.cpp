@@ -140,6 +140,16 @@ namespace vdc {
             if (elapsedMs >= discoveryTimeoutMs) {
                 LOG_WARN("Cannot get name for newly added virtual display after %u ms",
                     discoveryTimeoutMs);
+
+                // The add IOCTL already succeeded. Roll it back when Windows
+                // does not publish an active display path (for example, during
+                // an RDP session) so the driver is not left with an orphan.
+                if (SUDOVDA::RemoveVirtualDisplay(m_handle, guid)) {
+                    LOG_INFO("Rolled back virtual display after name discovery failure");
+                }
+                else {
+                    LOG_ERROR("Failed to roll back virtual display after name discovery failure");
+                }
                 return std::nullopt;
             }
 
@@ -157,6 +167,9 @@ namespace vdc {
         std::wstring dev(deviceName);
         if (dev.empty()) {
             LOG_ERROR("Virtual display created but name retrieval failed");
+            if (!SUDOVDA::RemoveVirtualDisplay(m_handle, guid)) {
+                LOG_ERROR("Failed to roll back unnamed virtual display");
+            }
             return std::nullopt;
         }
 
