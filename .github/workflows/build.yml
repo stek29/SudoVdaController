@@ -1,0 +1,28 @@
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2025-vs2026
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/setup-msbuild@v3
+        with:
+          msbuild-architecture: x64
+
+      - name: Build
+        run: >
+          msbuild SudoVdaController.slnx
+          /m
+          /p:Configuration=Release
+          /p:Platform=x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SudoVdaController-x64
+          path: '**/x64/Release/SudoVdaController.exe'
