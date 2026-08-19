@@ -204,9 +204,22 @@ namespace vdc {
                     if (kv.count("adapter"))
                         cfg.adapterLuid = std::stoull(kv["adapter"]);
 
-                    response = service->CreateVirtualDisplay(cfg)
-                        ? "Successfully created virtual display"
-                        : "Failed to create virtual display";
+                    if (kv.count("guid")) {
+                        auto guid = StringToGuid(kv["guid"]);
+                        if (guid) {
+                            response = service->CreateVirtualDisplay(cfg, guid)
+                                ? "Successfully created virtual display"
+                                : "Failed to create virtual display";
+                        }
+                        else {
+                            response = "Invalid virtual display GUID";
+                        }
+                    }
+                    else {
+                        response = service->CreateVirtualDisplay(cfg)
+                            ? "Successfully created virtual display"
+                            : "Failed to create virtual display";
+                    }
                 }
 
                 else if (verb == "remove") {
