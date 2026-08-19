@@ -132,15 +132,26 @@ namespace vdc {
 
         // Poll for GDI device name
         wchar_t deviceName[CCHDEVICENAME]{};
-        uint32_t retry = 20;
+        constexpr uint32_t pollIntervalMs = 100;
+        constexpr uint32_t discoveryTimeoutMs = 5000;
 
+        uint32_t elapsedMs = 0;
         while (!GetAddedDisplayName(output, deviceName)) {
-            Sleep(retry);
-            if (retry > 320) {
-                LOG_WARN("Cannot get name for newly added virtual display");
+            if (elapsedMs >= discoveryTimeoutMs) {
+                LOG_WARN("Cannot get name for newly added virtual display after %u ms",
+                    discoveryTimeoutMs);
                 return std::nullopt;
             }
-            retry *= 2;
+
+            // Keep the driver's watchdog alive while Windows publishes the new
+            // display topology. The regular watchdog thread starts once the GDI
+            // device name has been discovered.
+            if (elapsedMs > 0 && elapsedMs % 1000 == 0 && !PingDriver(m_handle)) {
+                LOG_WARN("Failed to ping SudoVDA while waiting for the display name");
+            }
+
+            Sleep(pollIntervalMs);
+            elapsedMs += pollIntervalMs;
         }
 
         std::wstring dev(deviceName);
