@@ -163,7 +163,7 @@ bool VirtualDisplayService::RemoveVirtualDisplay(const GUID& guid) {
         return true;
     } catch (const std::exception& ex) {
 		std::string guidStr = GuidToString(guid);
-        LOG_ERROR("Failed to remove virtual display with id (%s): %s", guidStr, ex.what());
+		LOG_ERROR("Failed to remove virtual display with id (%s): %s", guidStr.c_str(), ex.what());
         return false;
 	}
 }
