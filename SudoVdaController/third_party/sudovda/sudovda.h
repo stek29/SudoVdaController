@@ -239,7 +239,9 @@ static const bool GetAddedDisplayName(const VIRTUAL_DISPLAY_ADD_OUT& addedDispla
 		return 0;
 
 	auto path = std::find_if(paths.begin(), paths.end(), [&addedDisplay](DISPLAYCONFIG_PATH_INFO _path) {
-		return _path.targetInfo.id == addedDisplay.TargetId;
+		return _path.targetInfo.id == addedDisplay.TargetId &&
+			_path.targetInfo.adapterId.HighPart == addedDisplay.AdapterLuid.HighPart &&
+			_path.targetInfo.adapterId.LowPart == addedDisplay.AdapterLuid.LowPart;
 	});
 
 	if (path == paths.end()) {
@@ -249,7 +251,9 @@ static const bool GetAddedDisplayName(const VIRTUAL_DISPLAY_ADD_OUT& addedDispla
 	DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = {};
 	sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
 	sourceName.header.size = sizeof(DISPLAYCONFIG_SOURCE_DEVICE_NAME);
-	sourceName.header.adapterId = addedDisplay.AdapterLuid;
+	// Source IDs are scoped to the source adapter. Use the adapter from the
+	// matched path rather than assuming it is interchangeable with the target.
+	sourceName.header.adapterId = path->sourceInfo.adapterId;
 	sourceName.header.id = path->sourceInfo.id;
 	if (DisplayConfigGetDeviceInfo((DISPLAYCONFIG_DEVICE_INFO_HEADER*)&sourceName)) {
 		return false;
